@@ -65,3 +65,52 @@ writer = SummaryWriter("runs/housing_regression")
 
 epochs = 1000
 best_val_loss = float("inf")
+
+
+for epoch in range(epochs):
+    model.train()
+    train_losses = []
+    for X_batch, y_batch in train_loader:
+        X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+        predictions = model(X_batch)
+        loss = loss_fn(predictions, y_batch)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        train_losses.append(loss.item())
+
+    model.eval()
+    val_losses = []
+    with torch.no_grad():
+        for X_val_batch, y_val_batch in val_loader:
+            X_val_batch, y_val_batch = X_val_batch.to(device), y_val_batch.to(device)
+            val_loss = loss_fn(model(X_val_batch), y_val_batch)
+            val_losses.append(val_loss.item())
+
+    avg_train_loss = np.mean(train_losses)
+    avg_val_loss = np.mean(val_losses)
+
+    writer.add_scalar("Loss/train", avg_train_loss, epoch)
+    writer.add_scalar("Loss/val", avg_val_loss, epoch)
+
+    if avg_val_loss < best_val_loss:
+        best_val_loss = avg_val_loss
+        torch.save(
+            {
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "loss": avg_train_loss,
+                "val_loss": avg_val_loss,
+            },
+            "model.pt",
+        )
+
+    if (epoch + 1) % 10 == 0:
+        print(
+            f"Epoch {epoch+1}/{epochs} | Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f}"
+        )
+
+writer.close()
+print("Training complete. Best model saved to 'model.pt'.")
