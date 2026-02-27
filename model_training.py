@@ -60,7 +60,7 @@ print(f"Target Device Selected: {device.upper()}")
 model = SimpleRegressionNet().to(device)
 
 loss_fn = nn.MSELoss()
-optimizer = optim.SGD(model.parameters(), lr=0.01)
+optimizer = optim.SGD(model.parameters(), lr=0.001)
 writer = SummaryWriter("runs/housing_regression")
 
 epochs = 1000
