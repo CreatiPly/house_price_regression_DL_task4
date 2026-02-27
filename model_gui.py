@@ -1,6 +1,25 @@
 import tkinter as tk
+from tkinter import messagebox, filedialog
+import torch
+import torch.nn as nn
 from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import train_test_split
+
+
+class SimpleRegressionNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.linearLayer1 = nn.Linear(8, 50)
+        self.linearLayer2 = nn.Linear(50, 100)
+        self.relu = nn.ReLU()
+        self.linearLayer3 = nn.Linear(100, 1)
+
+    def forward(self, x):
+        u = self.linearLayer1(x)
+        v = self.relu(u)
+        w = self.linearLayer2(v)
+        m = self.relu(w)
+        return self.linearLayer3(m)
 
 
 class HousingPriceInferenceGUI:
@@ -8,6 +27,10 @@ class HousingPriceInferenceGUI:
         self.root = root
         self.root.title("Housing Price Regression Inference")
         self.root.geometry("1200x800")
+
+        self.model = None
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
         self.setup_ui()
 
     def setup_ui(self):
@@ -18,7 +41,7 @@ class HousingPriceInferenceGUI:
             text="Load Model",
             bg="blue",
             fg="white",
-            command=self.dummy_action,
+            command=self.load_model,
         ).pack(fill=tk.X, pady=2)
         tk.Button(control_frame, text="Load Dataset", command=self.load_dataset).pack(
             fill=tk.X, pady=2
@@ -86,6 +109,20 @@ class HousingPriceInferenceGUI:
         )
         self.pred_price_label.pack(side=tk.RIGHT, padx=5)
 
+    def load_model(self):
+        filepath = filedialog.askopenfilename(filetypes=[("PyTorch Model", "*.pt")])
+        if filepath:
+            try:
+                checkpoint = torch.load(
+                    filepath, map_location=self.device, weights_only=False
+                )
+                self.model = SimpleRegressionNet().to(self.device)
+                self.model.load_state_dict(checkpoint["model_state_dict"])
+                self.model.eval()
+                messagebox.showinfo("Success", "Model loaded successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load model: {e}")
+
     def load_dataset(self):
         self.train_listbox.delete(0, tk.END)
         self.test_listbox.delete(0, tk.END)
@@ -93,20 +130,18 @@ class HousingPriceInferenceGUI:
         X_train, X_val, y_train, y_val = train_test_split(
             housing.data, housing.target, test_size=0.2, random_state=42
         )
-
         for i in range(min(100, len(X_train))):
             features_str = ", ".join([f"{val:.4f}" for val in X_train[i]])
             self.train_listbox.insert(
                 tk.END, f"{features_str}, True Label: {y_train[i]:.4f}"
             )
-
         for i in range(min(100, len(X_val))):
             features_str = ", ".join([f"{val:.4f}" for val in X_val[i]])
             self.test_listbox.insert(
                 tk.END, f"{features_str}, True Label: {y_val[i]:.4f}"
             )
 
-    def dummy_action(self, *args):
+    def dummy_action(self):
         print("Action triggered - feature coming soon!")
 
 
